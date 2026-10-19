@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CareerCruise: Jelajah Kota Kerjaya</title>
+  <meta name="description" content="Permainan penerokaan minat kerjaya (RIASEC) untuk murid SK Jawi.">
+  <meta name="theme-color" content="#0a0e28">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CareerCruise">
+
+  <style>
+    :root {
+      --bg: #0a0e28;
+      --violet: #3a1662;
+      --neon: #00e6ff;
+      --pink: #ff40a0;
+      --sun: #ffd640;
+      --text: #f3f1ff;
+      --muted: #b9b3dc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+    }
+    #app {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: var(--bg);
+      opacity: 0;
+      transition: opacity .4s ease;
+    }
+    #app.ready { opacity: 1; }
+
+    /* Skrin pembuka */
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 24px;
+      text-align: center;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--violet) 100%);
+      z-index: 10;
+      transition: opacity .4s ease, visibility .4s;
+    }
+    #splash.hide { opacity: 0; visibility: hidden; }
+    #splash img {
+      width: 132px;
+      height: 132px;
+      border-radius: 30px;
+      box-shadow: 0 0 40px rgba(255, 64, 160, .45);
+    }
+    #splash h1 {
+      font-size: 1.6rem;
+      letter-spacing: .02em;
+      background: linear-gradient(90deg, var(--neon), var(--pink));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    #splash p { color: var(--muted); font-size: .95rem; }
+    .bar {
+      width: min(240px, 70vw);
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,.12);
+      overflow: hidden;
+    }
+    .bar::after {
+      content: "";
+      display: block;
+      width: 40%;
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--neon), var(--pink));
+      animation: drive 1.2s ease-in-out infinite;
+    }
+    @keyframes drive {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(260%); }
+    }
+    .btn {
+      display: none;
+      margin-top: 6px;
+      padding: 12px 22px;
+      border-radius: 999px;
+      border: 0;
+      font: inherit;
+      font-weight: 600;
+      color: #0a0e28;
+      background: linear-gradient(90deg, var(--neon), var(--sun));
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn.show { display: inline-block; }
+
+    /* Notis luar talian */
+    #offline {
+      position: fixed;
+      left: 50%;
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      max-width: calc(100% - 32px);
+      padding: 10px 16px;
+      border-radius: 12px;
+      background: #2a1240;
+      border: 1px solid var(--pink);
+      color: var(--text);
+      font-size: .9rem;
+      z-index: 20;
+      display: none;
+    }
+    #offline.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="splash">
+    <img src="icons/icon-512.png" alt="">
+    <h1>CareerCruise</h1>
+    <p>Jelajah Kota Kerjaya · SK Jawi</p>
+    <div class="bar" id="bar"></div>
+    <p id="status">Menghidupkan enjin…</p>
+    <a class="btn" id="openDirect" target="_self">Buka terus</a>
+    <button class="btn" id="retry" type="button">Cuba lagi</button>
+  </div>
+
+  <iframe
+    id="app"
+    title="CareerCruise"
+    allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope; clipboard-write"
+    allowfullscreen
+  ></iframe>
+
+  <div id="offline">Tiada sambungan internet. CareerCruise perlukan internet untuk menyimpan rekod murid.</div>
+
+  <script>
+    // URL aplikasi web Apps Script CareerCruise
+    const APP_URL = "https://script.google.com/macros/s/AKfycbyFMoW86bujCNTWjIOczdCfmRgXIwHYbuiA2Swul-UobwtwAxH8sJwaYOPDOT2F_0yP/exec";
+
+    const frame   = document.getElementById("app");
+    const splash  = document.getElementById("splash");
+    const status  = document.getElementById("status");
+    const bar     = document.getElementById("bar");
+    const direct  = document.getElementById("openDirect");
+    const retry   = document.getElementById("retry");
+    const offline = document.getElementById("offline");
+
+    direct.href = APP_URL;
+    let loaded = false;
+
+    function showFallback(msg) {
+      status.textContent = msg;
+      bar.style.display = "none";
+      direct.classList.add("show");
+      retry.classList.add("show");
+    }
+
+    function load() {
+      if (!navigator.onLine) {
+        showFallback("Tiada internet. Sambung ke internet, kemudian tekan Cuba lagi.");
+        return;
+      }
+      loaded = false;
+      bar.style.display = "";
+      status.textContent = "Menghidupkan enjin…";
+      direct.classList.remove("show");
+      retry.classList.remove("show");
+      splash.classList.remove("hide");
+      frame.classList.remove("ready");
+      frame.src = APP_URL;
+
+      // Apps Script kadang-kadang lambat bangun (cold start)
+      setTimeout(() => {
+        if (!loaded) showFallback("Masih memuatkan… Jika skrin kekal kosong, tekan Buka terus.");
+      }, 15000);
+    }
+
+    frame.addEventListener("load", () => {
+      if (!frame.src) return;
+      loaded = true;
+      frame.classList.add("ready");
+      splash.classList.add("hide");
+    });
+
+    retry.addEventListener("click", load);
+
+    window.addEventListener("online",  () => { offline.classList.remove("show"); if (!loaded) load(); });
+    window.addEventListener("offline", () => offline.classList.add("show"));
+    if (!navigator.onLine) offline.classList.add("show");
+
+    load();
+
+    // Daftar service worker (untuk boleh dipasang sebagai aplikasi)
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
