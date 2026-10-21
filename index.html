@@ -323,7 +323,7 @@ table.t tr.click:hover td{background:var(--deck-2)}
       <p class="lede">Pandu kereta elektrik 3D mengelilingi bandar masa depan, seorang diri atau berdua. Cuba enam daerah kerjaya, pilih dua misi kegemaran, kemudian buka Pasport Minat Saya. Tiada perlumbaan. Pandu ikut rentak kamu.</p>
       <p class="err" id="glErr" hidden></p>
       <div class="row">
-        <button class="btn" id="goSetup">Mula jelajah</button>
+        <button class="btn" id="goSetup" disabled>Memuatkan bandar…</button>
         <button class="btn ghost" id="resumeBtn" hidden>Sambung sesi</button>
       </div>
       <div class="row sndrow" id="startSnd"><span class="label">Bunyi</span><button type="button" class="sbtn wide" data-s="music"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg><i></i><span class="st"></span></button><button type="button" class="sbtn wide" data-s="sfx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg><i></i><span class="st"></span></button></div>
@@ -2124,12 +2124,13 @@ const boot=()=>{if(booted)return;booted=true;
   Promise.all(Object.keys(FAC).map(k=>loadImg(IMG[FAC[k].src]).then(im=>{FAC[k].el=im}))).then(start3D);
 };
 const start3D=()=>{
-  try{init3D()}catch(e){GL=false;const er=$('#glErr');er.hidden=false;er.textContent='Peranti atau pelayar ini tidak dapat memaparkan grafik 3D. Cuba buka di Chrome terkini atau Chromebook sekolah.';$('#goSetup').disabled=true}
+  $('#goSetup').textContent='Mula jelajah';
+  try{init3D();$('#goSetup').disabled=false}catch(e){GL=false;const er=$('#glErr');er.hidden=false;er.textContent='Peranti atau pelayar ini tidak dapat memaparkan grafik 3D. Cuba buka di Chrome terkini atau Chromebook sekolah.';$('#goSetup').disabled=true}
   resize();showStart();renderSoundBtns();requestAnimationFrame(t=>{last=t;requestAnimationFrame(frame)});
   api('getSettings').then(s=>{if(s){SETTINGS=Object.assign({format:'penuh',remind:15,sound:'on'},s);store.set(K_SETC,SETTINGS);soundRefresh()}},()=>{});
   flushQueue();
 };
-if(document.fonts&&document.fonts.ready)document.fonts.ready.then(boot,boot);else boot();
+if(document.fonts&&document.fonts.ready){document.fonts.ready.then(boot,boot);setTimeout(boot,4000)}else boot();
 })();
 </script>
 </body>
